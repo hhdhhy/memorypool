@@ -3,8 +3,8 @@
 
 ThreadCache &ThreadCache::getinstance()
 {
-    static thread_local ThreadCache tc;
-    return tc;
+    static thread_local ThreadCache  instance;
+    return instance;
 }
 
 void *ThreadCache::allocate(std::size_t size)
