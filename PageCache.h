@@ -5,12 +5,13 @@ class PageCache
 public:
     
     ~PageCache()=default;
-    PageCache& getinstance();
-    
+    static PageCache& getinstance();
+
+    Span* getspan(std::size_t page_num);
 private:
     PageCache();
 
-    Spanlist spanlist_[PAGE_MAX_SIZE];
+    Spanlist spanlist_[PAGE_MAX_NUM];
     std::mutex mutex_;
 };
 

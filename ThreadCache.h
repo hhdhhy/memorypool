@@ -16,6 +16,7 @@ private:
     void* obtain(std::size_t idx);
     void giveback(std::size_t idx);
 
-    std::array<void *,FREE_LIST_SIZE> free_list_;
-    std::array<std::size_t,FREE_LIST_SIZE> list_size_;
+
+    void *free_list_[LIST_SIZE];
+    std::size_t list_size_[LIST_SIZE];
 };
