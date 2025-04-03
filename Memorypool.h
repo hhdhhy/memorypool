@@ -97,13 +97,18 @@ inline void*& next(void* ptr)
 
 struct Span
 {
+    Span()
+    :Pid_(0),available_num_(0),list_(nullptr),next_(nullptr),num_(0),prev_(nullptr)
+    {
+    }
     std::size_t Pid_;//pageid mmap给的内存是按页面大小对齐的 Pid_<<PAGE_SHIFT就是该内存的起始地址
 
     Span* next_;
     Span* prev_;
     
     void * list_; //侵入式链表
-    std::size_t num_; //free_list_中剩余的节点数
+    std::size_t num_; ////节点总数（包括分配出去的
+    std::size_t available_num_; //list_中剩余的节点数
 };
 
 
@@ -150,14 +155,6 @@ public:
         head_ = pos;
     }
 
-    std::mutex& get_mutex()
-    {
-        return mutex_;
-    }
-    std::size_t& get_available_num()
-    {
-        return available_num_;
-    }
     Span* get_head()
     {
         return head_;
@@ -166,9 +163,10 @@ public:
     {
         return head_ == nullptr;
     }
+    
+    std::size_t available_num_;//可用的span数量
 private:
 
     Span* head_;
-    std::mutex mutex_;
-    std::size_t available_num_; //可用的span数量
+     
 };

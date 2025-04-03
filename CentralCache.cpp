@@ -3,7 +3,7 @@
 
 Span* CentralCache::get_span(std::size_t size,std::size_t idx)//获取一个可用span
 {
-    if(span_list_[idx].get_available_num())
+    if(span_list_[idx].available_num_)
     {
         Span *span = span_list_[idx].get_head();
         while(span)
@@ -18,7 +18,7 @@ Span* CentralCache::get_span(std::size_t size,std::size_t idx)//获取一个可�
         std::size_t page_num = get_page_num(idx*ALIGNMENT);
 
         Span* span= PageCache::getinstance().get_span(page_num);//从page cache中获取span
-           
+        span_list_[idx].available_num_++;
         //切分
         char* begin = reinterpret_cast<char*>(span->Pid_<<PAGE_SHIFT);
         char* end = begin + (span->num_<<PAGE_SHIFT);
@@ -40,10 +40,9 @@ Span* CentralCache::get_span(std::size_t size,std::size_t idx)//获取一个可�
         return span;
     }
 } 
-std::size_t CentralCache::fetch(void *&begin, void *&end, std::size_t size,std::size_t idx, size_t num)
+std::size_t CentralCache::get_mem(void *&begin, void *&end, std::size_t size,std::size_t idx, size_t num)
 {
-
-    std::lock_guard<std::mutex> lock(span_list_[idx].get_mutex());
+    std::lock_guard<std::mutex> lock(list_mutex_[idx]);
 
     Span* span = get_span(size,idx);
 
@@ -58,8 +57,42 @@ std::size_t CentralCache::fetch(void *&begin, void *&end, std::size_t size,std::
     span->list_=next(ptr);
     next(ptr)=nullptr;
     span->num_-=get_num;
-
+    if(span->num_==0)
+    {
+        span_list_[idx].available_num_--;
+    }
     return get_num;
+}
+void CentralCache::giveback_mem(void *ptr, std::size_t size, std::size_t idx)
+{
+    std::unique_lock<std::mutex> lock(list_mutex_[idx]);
+
+    void* next_ptr=nullptr;
+    while (ptr)
+    {
+        void* next_ptr=next(ptr);
+        Span* span=PageCache::getinstance().ptr_to_span(ptr);
+        next(ptr)=span->list_;
+        if(span->list_)
+        span->list_=ptr;
+        span->available_num_++;
+        if(span->available_num_==1)
+        {
+            span_list_[idx].available_num_++;
+        }
+        
+        if(span->available_num_==span->num_)// 回收span 可以优化******* 
+        {
+            span_list_[idx].available_num_--;
+            span_list_[idx].remove(span);
+            span->list_=nullptr;//还回来是乱序的所以直接清空
+            span->prev_=nullptr;
+            span->next_=nullptr;
+            lock.unlock();//减小临界区
+            PageCache::getinstance().giveback_span(span);
+            lock.lock();
+        }
+    }
 }
 CentralCache::CentralCache()
 {

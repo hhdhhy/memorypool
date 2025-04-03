@@ -5,8 +5,6 @@ PageCache::PageCache()
 {
 }
 
-
-
 PageCache &PageCache::getinstance()
 {
     static PageCache instance;
@@ -24,7 +22,8 @@ Span *PageCache::get_span(std::size_t page_num)
         {
             Span* span = span_list_[idx].get_head();
             span_list_[idx].remove(span);
-            span_
+            for(int i = 0;i < page_num;i++)
+            span_map_[span->Pid_+i] = span;
             return span;
         }
         
@@ -34,6 +33,8 @@ Span *PageCache::get_span(std::size_t page_num)
             {
                 Span* span = span_list_[i].get_head();
                 Span* new_span =split(span,page_num);
+                for(int j = 0;j < page_num;j++)
+                span_map_[new_span->Pid_+j] = new_span;
                 return new_span;
             }
         }
@@ -45,12 +46,17 @@ Span *PageCache::get_span(std::size_t page_num)
     //减小临界区
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        for(int j = 0;j < page_num;j++)
+        span_map_[new_span->Pid_+j] = new_span;
         span_list_[span->num_-1].push_front(span);
     }
     
     return new_span;
 }
-Span* split(Span* span,std::size_t page_num)//sanpan切下来page_num个page 返回切下来的的span
+void PageCache::giveback_span(Span *span)
+{
+}
+Span *split(Span *span, std::size_t page_num) // sanpan切下来page_num个page 返回切下来的的span
 {
     Span* new_span = new Span;
     new_span->num_=page_num;
@@ -61,14 +67,24 @@ Span* split(Span* span,std::size_t page_num)//sanpan切下来page_num个page 返
 
 Span* PageCache::system_alloc(std::size_t page_num)//获取page_num个page的span
 {
-    void* ptr=mmap(nullptr,page_num<<PAGE_SHIFT, 
-    PROT_READ | PROT_WRITE,MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    void* ptr=mmap(nullptr,page_num<<PAGE_SHIFT,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,-1,0); 
     if(ptr==MAP_FAILED)
     {
         return nullptr;
     }
     Span *span = new Span;
     span->num_=page_num;
-    span->Pid_=reinterpret_cast<std::size_t>(ptr)>>PAGE_SHIFT;
+    span->Pid_=get_page_id(ptr);
     return span;
+}
+
+Span* PageCache::ptr_to_span(void *ptr)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it= span_map_.find(get_page_id(ptr));
+    if(it==span_map_.end())
+    {
+        abort();
+    }
+    return it->second;
 }
