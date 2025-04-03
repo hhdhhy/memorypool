@@ -10,7 +10,6 @@ constexpr std::size_t PAGE_MAX_NUM = 128;
 constexpr std::size_t PAGE_SIZE = 4*1024;
 constexpr std::size_t PAGE_SHIFT = 12;
 
-
 size_t round_up(size_t size)
 {
     if(size<=16)//2B
@@ -86,6 +85,11 @@ std::size_t round_up_to(std::size_t size,std::size_t base)//base为2的幂
     return (size + base - 1) & ~(base - 1);
 }
 
+std::size_t get_page_id(void* ptr)
+{
+    return reinterpret_cast<std::size_t>(ptr)>>PAGE_SHIFT;
+}
+
 inline void*& next(void* ptr)
 {
     return *reinterpret_cast<void**>(ptr);
@@ -138,6 +142,13 @@ public:
             pos->prev_->next_ = pos->next_;
         }
     }
+    void push_front(Span* pos)
+    {
+        pos->next_ = head_;
+        if(head_)
+        head_->prev_ = pos;
+        head_ = pos;
+    }
 
     std::mutex& get_mutex()
     {
@@ -147,9 +158,13 @@ public:
     {
         return available_num_;
     }
-    Span*& get_head()
+    Span* get_head()
     {
         return head_;
+    }
+    bool empty()
+    {
+        return head_ == nullptr;
     }
 private:
 

@@ -13,7 +13,7 @@ public:
 
 private:
     ThreadCache();
-    void* obtain(std::size_t idx);
+    void* obtain(std::size_t size,std::size_t idx);
     void giveback(std::size_t idx);
 
 

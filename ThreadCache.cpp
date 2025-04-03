@@ -1,5 +1,6 @@
 
 #include "ThreadCache.h"
+#include "CentralCache.h"
 
 ThreadCache &ThreadCache::getinstance()
 {
@@ -9,20 +10,17 @@ ThreadCache &ThreadCache::getinstance()
 
 void *ThreadCache::allocate(std::size_t size)
 {   
-    if(size ==0)
-    {
-        size = ALIGNMENT;
-    }
+
     if(size > MAX_BYTES)
     {
         return malloc(size);
     }
-
+    size=round_up(size);
     std::size_t idx= get_idx(size);
     void *ptr=nullptr;
     if(free_list_[idx] == nullptr)
     {
-        ptr=obtain(idx);
+        ptr=obtain(size,idx);
     }
     else
     {
@@ -51,20 +49,20 @@ void ThreadCache::deallocate(void *ptr, std::size_t size)
     }
 }
 
-void* ThreadCache::obtain(std::size_t idx)//批量获取
+void* ThreadCache::obtain(std::size_t size,std::size_t idx)//批量获取
 {
-    std::size_t size=idx*ALIGNMENT;
 
     std::size_t num=std::max(MAX_BATCH_SIZE/size,static_cast<std::size_t>(1));
 
-    void* ptr=nullptr; //没写完从CentralCache获取
-
-    list_size_[idx]+=num-1;
-    if(num>1)
+    void* begin=nullptr; 
+    void* end=nullptr;
+    std::size_t get_num=CentralCache::getinstance().fetch(begin,end,size,idx,num);
+    list_size_[idx]+=get_num-1;
+    if(get_num>1)
     {
-        free_list_[idx] = next(ptr);//放的是ptr的下一个地址
+        free_list_[idx] = next(begin);//放的是ptr的下一个地址
     }
-    return ptr;
+    return begin;
 }
 void ThreadCache::giveback(std::size_t idx)
 {
