@@ -43,7 +43,7 @@ void ThreadCache::deallocate(void *ptr, std::size_t size)
     free_list_[idx] = ptr;
     list_size_[idx]++;
 
-    if(list_size_[idx] > LIST_MAX_SIZE)
+    if(list_size_[idx] > max_size_[idx]+2)
     {
         giveback(idx);
     }
@@ -52,11 +52,11 @@ void ThreadCache::deallocate(void *ptr, std::size_t size)
 void* ThreadCache::obtain(std::size_t size,std::size_t idx)//批量获取
 {
 
-    std::size_t num=std::max(MAX_BATCH_SIZE/size,static_cast<std::size_t>(1));
-
+    std::size_t num=std::min(max_size_[idx],get_num(size));
+    if(num==max_size_[idx])
+    max_size_[idx]++;
     void* begin=nullptr; 
-    void* end=nullptr;
-    std::size_t get_num=CentralCache::getinstance().get_mem(begin,end,size,idx,num);
+    std::size_t get_num=CentralCache::getinstance().get_mem(begin,size,idx,num);
     list_size_[idx]+=get_num-1;
     if(get_num>1)
     {
@@ -78,8 +78,8 @@ void ThreadCache::giveback(std::size_t idx)
     void *next_ptr=next(ptr);
     next(ptr)=nullptr;
     
-    // 没写完
     //返还给CentralCache
+    CentralCache::getinstance().giveback_mem(ptr,size,idx);
 
     list_size_[idx]=save_num;
 }

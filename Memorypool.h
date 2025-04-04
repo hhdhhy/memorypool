@@ -4,10 +4,9 @@
 
 constexpr std::size_t ALIGNMENT = sizeof (std::size_t);// ALIGNMENT等于size_t的大小
 constexpr std::size_t MAX_BYTES = 256 * 1024; // 256KB
-//constexpr std::size_t FREE_LIST_SIZE = MAX_BYTES / ALIGNMENT; 
-constexpr std::size_t LIST_SIZE = 220; 
-constexpr std::size_t PAGE_MAX_NUM = 128;
-constexpr std::size_t PAGE_SIZE = 4*1024;
+constexpr std::size_t LIST_SIZE = 220; //内存映射队列的数量
+constexpr std::size_t PAGE_MAX_NUM = 128;//最大页面数量
+constexpr std::size_t PAGE_SIZE = 4*1024;//一个页4KB
 constexpr std::size_t PAGE_SHIFT = 12;
 
 size_t round_up(size_t size)
@@ -171,3 +170,24 @@ private:
     Span* head_;
      
 };
+
+std::size_t get_num(std::size_t size)
+{
+    std::size_t num =MAX_BYTES/size;
+
+    if(num>256)
+    num=256;
+    if(num<2)
+    num=2;
+    return num;
+}
+
+std::size_t get_page_num(std::size_t size)
+{
+    std::size_t data_size=get_num(size)*size;
+    std::size_t num =num>>PAGE_SHIFT;
+
+    if(num<0)
+    num=1;
+    return num;
+}

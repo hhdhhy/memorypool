@@ -45,7 +45,7 @@ Span* CentralCache::get_span(std::size_t size,std::size_t idx,std::unique_lock<s
     return span;
     
 } 
-std::size_t CentralCache::get_mem(void *&begin, void *&end, std::size_t size,std::size_t idx, size_t num)
+std::size_t CentralCache::get_mem(void *&begin, std::size_t size,std::size_t idx, size_t num)
 {
     std::unique_lock<std::mutex> lock(list_mutex_[idx]);
     Span* span = get_span(size,idx,lock);
@@ -57,7 +57,6 @@ std::size_t CentralCache::get_mem(void *&begin, void *&end, std::size_t size,std
     ptr=next(ptr);
 
     begin=span->list_;
-    end=ptr;
     span->list_=next(ptr);
     next(ptr)=nullptr;
     span->num_-=get_num;

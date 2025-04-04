@@ -19,4 +19,6 @@ private:
 
     void *free_list_[LIST_SIZE];
     std::size_t list_size_[LIST_SIZE];
+    std::size_t max_size_[LIST_SIZE];//慢启动
+
 };
