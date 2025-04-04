@@ -24,6 +24,7 @@ Span *PageCache::get_span(std::size_t page_num)
             span_list_[idx].remove(span);
             for(int i = 0;i < page_num;i++)
             span_map_[span->Pid_+i] = span;
+            span->is_used_ = true;
             return span;
         }
         
@@ -35,6 +36,7 @@ Span *PageCache::get_span(std::size_t page_num)
                 Span* new_span =split(span,page_num);
                 for(int j = 0;j < page_num;j++)
                 span_map_[new_span->Pid_+j] = new_span;
+                new_span->is_used_ = true;
                 return new_span;
             }
         }
@@ -43,18 +45,71 @@ Span *PageCache::get_span(std::size_t page_num)
     
     Span* span = system_alloc(PAGE_MAX_NUM);
     Span* new_span =split(span,page_num);
+    
     //减小临界区
     {
         std::lock_guard<std::mutex> lock(mutex_);
         for(int j = 0;j < page_num;j++)
         span_map_[new_span->Pid_+j] = new_span;
+        span_map_[span->Pid_]=span;
+        span_map_[span->Pid_+page_num-1]=span;
         span_list_[span->num_-1].push_front(span);
+        new_span->is_used_ = true;
     }
     
     return new_span;
 }
 void PageCache::giveback_span(Span *span)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
+    while(true)//向左
+    {
+        auto it = span_map_.find(span->Pid_-1);
+        if(it==span_map_.end())
+        {
+            break;
+        }
+        Span* nspan=it->second;  
+        if(nspan->is_used_==true)
+        {
+            break;
+        }
+        if(nspan->num_+span->num_>PAGE_MAX_NUM)
+        {
+            break;
+        }
+        span->num_ += nspan->num_;
+        span->Pid_ =nspan->Pid_;
+        //不用从map删掉不会被用到并且等以后添加的时候会顶替掉
+        span_list_[nspan->num_].remove(nspan);
+        delete nspan;
+    }
+    while(true)//向右
+    {
+        auto it = span_map_.find(span->Pid_+span->num_);
+        if(it==span_map_.end())
+        {
+            break;
+        }
+        Span* nspan=it->second;  
+        if(nspan->is_used_==true)
+        {
+            break;
+        }
+        if(nspan->num_+span->num_>PAGE_MAX_NUM)
+        {
+            break;
+        }
+        span->num_ += nspan->num_;
+        //不用从map删掉不会被用到并且等以后添加的时候会顶替掉
+        span_list_[nspan->num_].remove(nspan);
+        delete nspan;
+    }
+
+    span_list_[span->num_].push_front(span);
+    span->is_used_ = false;
+    span_map_[span->Pid_]=span;
+    span_map_[span->Pid_+span->num_-1]=span;
 }
 Span *split(Span *span, std::size_t page_num) // sanpan切下来page_num个page 返回切下来的的span
 {

@@ -98,7 +98,7 @@ inline void*& next(void* ptr)
 struct Span
 {
     Span()
-    :Pid_(0),available_num_(0),list_(nullptr),next_(nullptr),num_(0),prev_(nullptr)
+    :Pid_(0),available_num_(0),list_(nullptr),next_(nullptr),num_(0),prev_(nullptr),is_used_(false)
     {
     }
     std::size_t Pid_;//pageid mmap给的内存是按页面大小对齐的 Pid_<<PAGE_SHIFT就是该内存的起始地址
@@ -109,6 +109,7 @@ struct Span
     void * list_; //侵入式链表
     std::size_t num_; ////节点总数（包括分配出去的
     std::size_t available_num_; //list_中剩余的节点数
+    bool is_used_;
 };
 
 

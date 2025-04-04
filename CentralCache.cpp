@@ -1,7 +1,7 @@
 #include "CentralCache.h"
 #include "PageCache.h"
 
-Span* CentralCache::get_span(std::size_t size,std::size_t idx)//获取一个可用span
+Span* CentralCache::get_span(std::size_t size,std::size_t idx,std::unique_lock<std::mutex>&lock)//获取一个可用span
 {
     if(span_list_[idx].available_num_)
     {
@@ -13,39 +13,43 @@ Span* CentralCache::get_span(std::size_t size,std::size_t idx)//获取一个可�
             span = span->next_;
         }
     }
-    else
+
+    lock.unlock();
+
+    std::size_t page_num = get_page_num(idx*ALIGNMENT);
+
+    Span* span= PageCache::getinstance().get_span(page_num);//从page cache中获取span
+    
+    
+    //切分
+    char* begin = reinterpret_cast<char*>(span->Pid_<<PAGE_SHIFT);
+    char* end = begin + (span->num_<<PAGE_SHIFT);
+    void *ptr= begin;
+    while(begin!=end)
     {
-        std::size_t page_num = get_page_num(idx*ALIGNMENT);
-
-        Span* span= PageCache::getinstance().get_span(page_num);//从page cache中获取span
-        span_list_[idx].available_num_++;
-        //切分
-        char* begin = reinterpret_cast<char*>(span->Pid_<<PAGE_SHIFT);
-        char* end = begin + (span->num_<<PAGE_SHIFT);
-        void *ptr= begin;
-        while(begin!=end)
+        span->num_++;
+        begin+=size;
+        if(begin==end)
         {
-            span->num_++;
-            begin+=size;
-            if(begin==end)
-            {
-                next(ptr)=nullptr;
-                break;
-            }
-            next(ptr)=begin;
-            ptr=next(ptr);
+            next(ptr)=nullptr;
+            break;
         }
-        span_list_[idx].push_front(span);
-
-        return span;
+        next(ptr)=begin;
+        ptr=next(ptr);
     }
+
+    lock.lock();
+    span_list_[idx].push_front(span);
+    span_list_[idx].available_num_++;
+
+    return span;
+    
 } 
 std::size_t CentralCache::get_mem(void *&begin, void *&end, std::size_t size,std::size_t idx, size_t num)
 {
-    std::lock_guard<std::mutex> lock(list_mutex_[idx]);
-
-    Span* span = get_span(size,idx);
-
+    std::unique_lock<std::mutex> lock(list_mutex_[idx]);
+    Span* span = get_span(size,idx,lock);
+    
     std::size_t get_num=std::min(num,span->num_);
     void *ptr=span->list_;
 
@@ -57,6 +61,7 @@ std::size_t CentralCache::get_mem(void *&begin, void *&end, std::size_t size,std
     span->list_=next(ptr);
     next(ptr)=nullptr;
     span->num_-=get_num;
+
     if(span->num_==0)
     {
         span_list_[idx].available_num_--;
