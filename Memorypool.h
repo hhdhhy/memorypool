@@ -1,27 +1,29 @@
 #pragma once
 #include <algorithm>
 #include <mutex>
-
+#include<cassert>
 constexpr std::size_t ALIGNMENT = sizeof (std::size_t);// ALIGNMENT等于size_t的大小
 constexpr std::size_t MAX_BYTES = 256 * 1024; // 256KB
-constexpr std::size_t LIST_SIZE = 220; //内存映射队列的数量
+constexpr std::size_t LIST_SIZE = 208; //内存映射队列的数量
 constexpr std::size_t PAGE_MAX_NUM = 128;//最大页面数量
 constexpr std::size_t PAGE_SIZE = 4*1024;//一个页4KB
 constexpr std::size_t PAGE_SHIFT = 12;
 
-size_t round_up(size_t size)
+inline std::size_t get_idx_to(std::size_t size,size_t base)
 {
-    if(size<=16)//2B
+    return (size+base-1)/base -1;
+}
+
+inline std::size_t round_up_to(std::size_t size,std::size_t base)//base为2的幂
+{
+    return (size + base - 1) & ~(base - 1);
+}
+
+inline size_t round_up(size_t size)
+{
+    if(size<=128)//8B
     {
-        return  round_up_to(size,2);  //(16-0)/2=8
-    }
-    else if(size<=64)//4B
-    {
-        return  round_up_to(size,4); //(64-16)/4=12
-    }
-    else if(size<=128)//8B
-    {
-        return  round_up_to(size,8); //(128-64)/8=8
+        return  round_up_to(size,8); //(128-64)/8=16
     }
     else if(size<=1024)//16B
     {
@@ -42,49 +44,32 @@ size_t round_up(size_t size)
     
     abort();
 }
-std::size_t get_idx(std::size_t size)
+inline std::size_t get_idx(std::size_t size)
 {
-    if(size<=16)//2B
+    if(size<=128)//8B
     {
-        return  get_idx_to(size,2);  //(16-0)/2=8
-    }
-    else if(size<=64)//4B
-    {
-        return  get_idx_to(size-16,4)+8; //(64-16)/4=12
-    }
-    else if(size<=128)//8B
-    {
-        return  get_idx_to(size-64,8)+20; //(128-64)/8=8
+        return  get_idx_to(size,8); //(128)/8=16
     }
     else if(size<=1024)//16B
     {
-        return  get_idx_to(size-128,16)+28; //(1024-128)/16=56      
+        return  get_idx_to(size-128,16)+16; //(1024-128)/16=56      
     }
     else if(size<=8192)//128B
     {
-        return  get_idx_to(size-1024,128)+84;//(8192-1024)/128=56
+        return  get_idx_to(size-1024,128)+72;//(8192-1024)/128=56
     }
     else if(size<=65536)//1024B
     {
-        return  get_idx_to(size-8192,1024)+140;//(65536-8192)/1024=56
+        return  get_idx_to(size-8192,1024)+128;//(65536-8192)/1024=56
     }
     else if(size<=262144)//8*1024B
     {
-        return  get_idx_to(size-65536,8*1024)+196;//(262144-65536)/(8*1024)=24
+        return  get_idx_to(size-65536,8*1024)+184;//(262144-65536)/(8*1024)=24
     }
     abort();
 }
-std::size_t get_idx_to(std::size_t size,size_t base)
-{
-    return (size+base-1)/base -1;
-}
 
-std::size_t round_up_to(std::size_t size,std::size_t base)//base为2的幂
-{
-    return (size + base - 1) & ~(base - 1);
-}
-
-std::size_t get_page_id(void* ptr)
+inline std::size_t get_page_id(void* ptr)
 {
     return reinterpret_cast<std::size_t>(ptr)>>PAGE_SHIFT;
 }
@@ -97,7 +82,8 @@ inline void*& next(void* ptr)
 struct Span
 {
     Span()
-    :Pid_(0),available_num_(0),list_(nullptr),next_(nullptr),num_(0),prev_(nullptr),is_used_(false)
+    :Pid_(0),available_num_(0),list_(nullptr),next_(nullptr),num_(0),
+    prev_(nullptr),is_used_(false),page_num_(0)
     {
     }
     std::size_t Pid_;//pageid mmap给的内存是按页面大小对齐的 Pid_<<PAGE_SHIFT就是该内存的起始地址
@@ -106,7 +92,9 @@ struct Span
     Span* prev_;
     
     void * list_; //侵入式链表
+    
     std::size_t num_; ////节点总数（包括分配出去的
+    std::size_t page_num_;
     std::size_t available_num_; //list_中剩余的节点数
     bool is_used_;
 };
@@ -121,17 +109,6 @@ public:
         available_num_=0;
     }
 
-    void insert(Span* pos,Span* ptr)
-    {
-        if(ptr->next_)
-        {
-            pos->next_->prev_ = ptr;
-        }
-        ptr->next_ = pos->next_;
-
-        pos->next_ = ptr;
-        ptr->prev_ = pos;
-    }
     void remove(Span* pos)
     {
         if(pos==head_)
@@ -146,12 +123,17 @@ public:
         {
             pos->prev_->next_ = pos->next_;
         }
+        pos->prev_ = nullptr;  // 断开节点指针，避免悬垂指针
+        pos->next_ = nullptr;
     }
     void push_front(Span* pos)
     {
         pos->next_ = head_;
+        pos->prev_ = nullptr;
         if(head_)
-        head_->prev_ = pos;
+        {
+            head_->prev_ = pos;
+        }
         head_ = pos;
     }
 
@@ -171,7 +153,7 @@ private:
      
 };
 
-std::size_t get_num(std::size_t size)
+inline std::size_t get_num(std::size_t size)
 {
     std::size_t num =MAX_BYTES/size;
 
@@ -182,12 +164,12 @@ std::size_t get_num(std::size_t size)
     return num;
 }
 
-std::size_t get_page_num(std::size_t size)
+inline std::size_t get_page_num(std::size_t size)
 {
     std::size_t data_size=get_num(size)*size;
-    std::size_t num =num>>PAGE_SHIFT;
+    std::size_t num =data_size>>PAGE_SHIFT;
 
-    if(num<0)
+    if(num<=0)
     num=1;
     return num;
 }

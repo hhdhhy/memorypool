@@ -28,30 +28,33 @@ void *ThreadCache::allocate(std::size_t size)
         ptr = free_list_[idx];
         free_list_[idx] = next(ptr);
     }
+    next(ptr)=nullptr;
     return ptr;
 }
 
 void ThreadCache::deallocate(void *ptr, std::size_t size)
 {
-    if(size>ALIGNMENT)
+    if(size>MAX_BYTES)
     {
         free(ptr);
         return;
     }
+    size=round_up(size);
     std::size_t idx= get_idx(size);
     next(ptr) = free_list_[idx];
     free_list_[idx] = ptr;
     list_size_[idx]++;
 
-    if(list_size_[idx] > max_size_[idx]+2)
+    if(list_size_[idx] >max_size_[idx]+2)
     {
-        giveback(idx);
+        giveback(size,idx);
     }
 }
 
 void* ThreadCache::obtain(std::size_t size,std::size_t idx)//批量获取
 {
-
+    if(max_size_[idx]==0)
+    max_size_[idx]=1;
     std::size_t num=std::min(max_size_[idx],get_num(size));
     if(num==max_size_[idx])
     max_size_[idx]++;
@@ -64,22 +67,25 @@ void* ThreadCache::obtain(std::size_t size,std::size_t idx)//批量获取
     }
     return begin;
 }
-void ThreadCache::giveback(std::size_t idx)
+void ThreadCache::giveback(std::size_t size,std::size_t idx)
 {
-    std::size_t size=idx*ALIGNMENT;
     
-    std::size_t save_num=std::max(list_size_[idx]/4,static_cast<std::size_t>(1));
-
+    std::size_t ret_num=std::max(list_size_[idx]/4,static_cast<std::size_t>(1));
     void *ptr=free_list_[idx];
 
-    for(int i=0;i<save_num-1;++i)
-    ptr=next(ptr);
+    for(int i=0;i<(int)ret_num-1;++i)
+    {
+        ptr=next(ptr);
+    }
+    
 
-    void *next_ptr=next(ptr);
+    void *ret_ptr=free_list_[idx];
+    free_list_[idx]=next(ptr);
+ 
     next(ptr)=nullptr;
     
     //返还给CentralCache
-    CentralCache::getinstance().giveback_mem(ptr,size,idx);
-
-    list_size_[idx]=save_num;
+    std::size_t get= CentralCache::getinstance().giveback_mem(ret_ptr,size,idx);
+    
+    list_size_[idx]-=ret_num;
 }
