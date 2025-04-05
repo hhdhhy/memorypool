@@ -219,16 +219,16 @@ int main()
 {
     // ConcurrentAllocTest2();
 
-	std::size_t n = 10000;
+	std::size_t n = 1000;
 	
 	cout << "==========================================================" << endl;
 	// 这里表示4个线程，每个线程申请10万次，总共申请40万次
 	BenchmarkMalloc(n, 4, 10);
-	
+	cout << endl << endl;
 	
 	// 这里表示4个线程，每个线程申请10万次，总共申请40万次
 	BenchmarkConcurrentMalloc(n, 4, 10); 
-	cout << endl << endl;
+	
 	cout << "==========================================================" << endl;
 	return 0;
 }
