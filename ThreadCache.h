@@ -3,8 +3,7 @@
 #include "Memorypool.h"
 class ThreadCache
 {
-    static const std::size_t LIST_MAX_SIZE = 128;
-    static const size_t MAX_BATCH_SIZE = 4 * 1024; // 4KB
+
 public:
     static ThreadCache& getinstance();
     ~ThreadCache();

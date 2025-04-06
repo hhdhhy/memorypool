@@ -11,7 +11,7 @@ ThreadCache &ThreadCache::getinstance()
 
 ThreadCache::~ThreadCache()
 {
-    for(int i=0;i<LIST_MAX_SIZE;++i)
+    for(int i=0;i<LIST_SIZE;++i)
     {
         if(free_list_[i]!=nullptr)
         CentralCache::getinstance().giveback_mem(free_list_[i],i);
