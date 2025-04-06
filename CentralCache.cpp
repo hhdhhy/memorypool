@@ -1,7 +1,14 @@
 #include "CentralCache.h"
 #include "PageCache.h"
 
-Span* CentralCache::get_span(std::size_t size,std::size_t idx,std::unique_lock<std::mutex>&lock)//获取一个可用span
+CentralCache* CentralCache:: instance_=new CentralCache;
+CentralCache &CentralCache::getinstance()
+{
+    return *instance_;
+}
+
+
+Span *CentralCache::get_span(std::size_t size, std::size_t idx, std::unique_lock<std::mutex> &lock) // 获取一个可用span
 {
     if(span_list_[idx].available_num_)
     {
@@ -24,7 +31,7 @@ Span* CentralCache::get_span(std::size_t size,std::size_t idx,std::unique_lock<s
     char* begin = (char*)(span->Pid_ << PAGE_SHIFT);
 	char* end = (char*)(begin + (span->page_num_ << PAGE_SHIFT));
 	// 开始切分span管理的空间
-    
+    span->mem_size_=size;
 	span->list_ = begin;// 管理的空间放到span->_freeList中
 
 	void* ptr = begin; 
@@ -72,7 +79,7 @@ std::size_t CentralCache::get_mem(void *&begin, std::size_t size,std::size_t idx
     }
     return get_num;
 }
-std::size_t CentralCache::giveback_mem(void *ptr, std::size_t size, std::size_t idx)
+std::size_t CentralCache::giveback_mem(void *ptr, std::size_t idx)
 {
     std::unique_lock<std::mutex> lock(list_mutex_[idx]);
 
@@ -107,8 +114,3 @@ std::size_t CentralCache::giveback_mem(void *ptr, std::size_t size, std::size_t 
     return num;
 }
 
-CentralCache& CentralCache::getinstance()
-{
-    static CentralCache instance;
-    return instance;
-}
