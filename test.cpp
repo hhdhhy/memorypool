@@ -112,12 +112,13 @@ void BenchmarkMalloc(size_t ntimes, size_t nworks, size_t rounds) {
 
     // std::random_device rd;
     std::mt19937 gen;
-	gen.seed(11144);
-    std::uniform_int_distribution<> dist_size(1, 16 * 1024);  // 随机内存块大小
-    std::uniform_int_distribution<> dist_count(1, ntimes);  // 随机内存分配次数
+	
 
     for (size_t k = 0; k < nworks; ++k) {
         vthread[k] = std::thread([&, k]() {
+			gen.seed(11144);
+			std::uniform_int_distribution<> dist_size(1, 16 * 1024);  // 随机内存块大小
+			std::uniform_int_distribution<> dist_count(10, ntimes);  // 随机内存分配次数
             std::vector<void*> v(ntimes);
 			std::vector<int> p(ntimes);
 
@@ -163,13 +164,14 @@ void BenchmarkConcurrentMalloc(size_t ntimes, size_t nworks, size_t rounds) {
     std::atomic<size_t> free_costtime(0);
 
     // std::random_device rd;
-    std::mt19937 gen;
-	gen.seed(11144);
-    std::uniform_int_distribution<> dist_size(1,16 * 1024);  // 随机内存块大小
-    std::uniform_int_distribution<> dist_count(1, ntimes);  // 随机内存分配次数
+    
 
     for (size_t k = 0; k < nworks; ++k) {
         vthread[k] = std::thread([&, k]() {
+			std::mt19937 gen;
+			gen.seed(11144);
+			std::uniform_int_distribution<> dist_size(1,16 * 1024);  // 随机内存块大小
+			std::uniform_int_distribution<> dist_count(10, ntimes);  // 随机内存分配次数
             std::vector<void*> v(ntimes);
             std::vector<int> p(ntimes);
 
@@ -209,6 +211,7 @@ void BenchmarkConcurrentMalloc(size_t ntimes, size_t nworks, size_t rounds) {
 }
 
 int main() {
+	TestMultiThread();
     // 配置测试参数
     size_t ntimes = 1000;  // 每轮分配内存的次数
     size_t nworks = 4;     // 线程数

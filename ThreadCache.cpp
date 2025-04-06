@@ -68,7 +68,7 @@ void ThreadCache::deallocate(void *ptr)
 void* ThreadCache::obtain(std::size_t size,std::size_t idx)//批量获取
 {
     if(max_size_[idx]==0)
-    max_size_[idx]=5;
+    max_size_[idx]=2;
     std::size_t num=std::min(max_size_[idx],get_num(size));
     if(num==max_size_[idx])
     max_size_[idx]<<=1;
@@ -85,7 +85,7 @@ void ThreadCache::giveback(std::size_t size,std::size_t idx)
 {
     
     // std::size_t ret_num=std::max(list_size_[idx]/4,static_cast<std::size_t>(1));
-    std::size_t ret_num=std::min(list_size_[idx],max_size_[idx]);
+    std::size_t ret_num=std::min(list_size_[idx],std::max((std::size_t)64,max_size_[idx]));
     
     void *ptr=free_list_[idx];
 

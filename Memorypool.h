@@ -160,8 +160,8 @@ inline std::size_t get_num(std::size_t size)
 
     if(num>64)
     num=64;
-    if(num<2)
-    num=2;
+    if(num<4)
+    num=4;
     return num;
 }
 
