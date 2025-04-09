@@ -48,8 +48,6 @@ Span *PageCache::get_span(std::size_t page_num)
             }
         }
 
-    
-    
     Span* span = system_alloc(PAGE_MAX_NUM+page_num);
     Span* new_span =split(span,page_num);
     
@@ -90,9 +88,9 @@ void PageCache::giveback_span(Span *span)
         }
         span->page_num_ += nspan->page_num_;
         span->Pid_ =nspan->Pid_;
-        // span_map_.erase(nspan->Pid_);
-        // span_map_.erase(nspan->Pid_+nspan->page_num_-1);
-        //不用从map删掉不会被用到并且等以后添加的时候会顶替掉
+        span_map_.erase(nspan->Pid_);
+        span_map_.erase(nspan->Pid_+nspan->page_num_-1);
+
         span_list_[nspan->page_num_-1].remove(nspan);
         delete_Span(nspan);
     }
@@ -114,9 +112,9 @@ void PageCache::giveback_span(Span *span)
             break;
         }
         span->page_num_ += nspan->page_num_;
-        // span_map_.erase(nspan->Pid_);
-        // span_map_.erase(nspan->Pid_+nspan->page_num_-1);
-        //不用从map删掉不会被用到并且等以后添加的时候会顶替掉
+        span_map_.erase(nspan->Pid_);
+        span_map_.erase(nspan->Pid_+nspan->page_num_-1);
+
         span_list_[nspan->page_num_-1].remove(nspan);
         delete_Span(nspan);
     }
@@ -129,12 +127,12 @@ void PageCache::giveback_span(Span *span)
 }
 PageCache::PageCache()
 {
-    for(int i=0;i<50;++i)
+    for(int i=0;i<100;++i)
     {
         Span* span = new Span;
         new_Span_.push_front(span);
     }
-    new_Span_.available_num_=50;
+    new_Span_.available_num_=100;
 
 }
 Span *PageCache::split(Span *span, std::size_t page_num) // sanpan切下来page_num个page 返回切下来的的span
@@ -185,7 +183,7 @@ Span *PageCache::get_new_Span()
 
 void PageCache::delete_Span(Span *span)
 {
-    if(new_Span_.available_num_>=50)
+    if(new_Span_.available_num_>=100)
     {
         delete span;
         return;

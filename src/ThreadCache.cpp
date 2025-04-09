@@ -71,7 +71,7 @@ void* ThreadCache::obtain(std::size_t size,std::size_t idx)//批量获取
     max_size_[idx]=2;
     std::size_t num=std::min(max_size_[idx],get_num(size));
     if(num==max_size_[idx])
-    max_size_[idx]<<=1;
+    max_size_[idx]+=2;
     void* begin=nullptr; 
     std::size_t get_num=CentralCache::getinstance().get_mem(begin,size,idx,num);
     list_size_[idx]+=get_num-1;

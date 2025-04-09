@@ -105,9 +105,8 @@ class Spanlist//双向链表
 {
 public:
     Spanlist()
+    :available_num_(0),head_(nullptr)
     {
-        head_ = nullptr;
-        available_num_=0;
     }
 
     void remove(Span* pos)
@@ -158,8 +157,8 @@ inline std::size_t get_num(std::size_t size)
 {
     std::size_t num =MAX_BYTES/size;
 
-    if(num>64)
-    num=64;
+    if(num>128)
+    num=128;
     if(num<4)
     num=4;
     return num;
