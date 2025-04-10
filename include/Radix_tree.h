@@ -30,7 +30,7 @@ private:
 	Node* ptrs[INTERIOR_LENGTH];
 public:
 	typedef std::size_t Number;
-
+    
     Span*& operator[](Number k)
     {
 		assert(k<=SIZE_MAX);
@@ -38,6 +38,7 @@ public:
 		const Number i2 = (k >> LEAF_BITS) & (INTERIOR_LENGTH - 1); //第二层对应的下标
 		const Number i3 = k & (LEAF_LENGTH - 1);                    //第三层对应的下标
 		// if(!Ensure(k))//确保映射第k页页号的空间是开辟好了的
+        // return nullptr;
         // abort(); 
 		if (ptrs[i1] == NULL) //第一层i1下标指向的空间未开辟
         {

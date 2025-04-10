@@ -52,14 +52,14 @@ void ThreadCache::deallocate(void *ptr)
         return;
     }
     std::size_t size=span->mem_size_;
-    size=round_up(size);
+    // size=round_up(size);
     std::size_t idx= get_idx(size);
     next(ptr) = free_list_[idx];
     free_list_[idx] = ptr;
     list_size_[idx]++;
 
     // if(list_size_[idx] >256)
-    if(list_size_[idx] >max_size_[idx]*2)
+    if(list_size_[idx] >max_size_[idx]*3)
     {
         giveback(size,idx);
     }

@@ -54,5 +54,12 @@
         "mutex": "cpp",
         "thread": "cpp",
         "cassert": "cpp"
-    }
+    },
+
+    "cmake.cmakePath": "/usr/bin/cmake"
+    
+    // "cmake.environment": {
+    //     "PATH": "/usr/bin:${env:PATH}" // 将 make 所在目录添加到 PATH
+    //   }
+    
 }

@@ -157,10 +157,10 @@ inline std::size_t get_num(std::size_t size)
 {
     std::size_t num =MAX_BYTES/size;
 
-    if(num>128)
-    num=128;
-    if(num<4)
-    num=4;
+    if(num>64)
+    num=64;
+    if(num<2)
+    num=2;
     return num;
 }
 

@@ -1,0 +1,1 @@
+/usr/bin/c++  -O3   CMakeFiles/memory_test.dir/src/CentralCache.cpp.o CMakeFiles/memory_test.dir/src/PageCache.cpp.o CMakeFiles/memory_test.dir/src/ThreadCache.cpp.o CMakeFiles/memory_test.dir/src/test.cpp.o  -o ../bin/memory_test  -lpthread 

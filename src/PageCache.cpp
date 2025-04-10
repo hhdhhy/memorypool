@@ -10,26 +10,26 @@ PageCache &PageCache::getinstance()
 Span *PageCache::get_span(std::size_t page_num)
 {
     std::size_t idx = page_num - 1;
-    
     {
         std::unique_lock<std::mutex> lock(mutex_);
+    
+        
 
         if(!span_list_[idx].empty())//存在空闲span
         {
             Span* span = span_list_[idx].get_head();
             span_list_[idx].remove(span);
             span->is_used_ = true;
-            lock.unlock();
+            
             for(int i = 0;i < page_num;i++)
             span_map_[span->Pid_+i] = span;
             
             return span;
         }
-    }    
+        
 
         for(int i=idx+1;i<PAGE_MAX_NUM;++i)//找到大于page_num的span
         {
-            std::unique_lock<std::mutex> lock(mutex_);
             if(!span_list_[i].empty())
             {
                 Span* span = span_list_[i].get_head();
@@ -41,12 +41,13 @@ Span *PageCache::get_span(std::size_t page_num)
                 span_map_[span->Pid_+span->page_num_-1]=span;
                 span_list_[span->page_num_-1].push_front(span);
                 new_span->is_used_ = true;
-                lock.unlock();
+                
                 for(int j = 0;j < page_num;j++)
                 span_map_[new_span->Pid_+j] = new_span;
                 return new_span;
             }
         }
+    }
 
     Span* span = system_alloc(PAGE_MAX_NUM+page_num);
     Span* new_span =split(span,page_num);
@@ -68,10 +69,9 @@ Span *PageCache::get_span(std::size_t page_num)
 }
 void PageCache::giveback_span(Span *span)
 {
-    
+    std::lock_guard<std::mutex> lock(mutex_);
     while(true)//向左
     {
-        std::lock_guard<std::mutex> lock(mutex_);
         if(!span_map_.check(span->Pid_-1))
         // if(!span_map_.count(span->Pid_-1))
         {
@@ -96,7 +96,6 @@ void PageCache::giveback_span(Span *span)
     }
     while(true)//向右
     {
-        std::lock_guard<std::mutex> lock(mutex_);
         if(!span_map_.check(span->Pid_+span->page_num_))
         // if(!span_map_.count(span->Pid_+span->page_num_))
         {
@@ -119,7 +118,7 @@ void PageCache::giveback_span(Span *span)
         delete_Span(nspan);
     }
 
-    std::lock_guard<std::mutex> lock(mutex_);
+    
     span_list_[span->page_num_-1].push_front(span);
     span->is_used_ = false;
     span_map_[span->Pid_]=span;
@@ -127,12 +126,12 @@ void PageCache::giveback_span(Span *span)
 }
 PageCache::PageCache()
 {
-    for(int i=0;i<100;++i)
+    for(int i=0;i<150;++i)
     {
         Span* span = new Span;
         new_Span_.push_front(span);
     }
-    new_Span_.available_num_=100;
+    new_Span_.available_num_=150;
 
 }
 Span *PageCache::split(Span *span, std::size_t page_num) // sanpan切下来page_num个page 返回切下来的的span
@@ -150,6 +149,7 @@ Span* PageCache::system_alloc(std::size_t page_num)//获取page_num个page的spa
                 MAP_PRIVATE|MAP_ANONYMOUS|MAP_POPULATE,-1,0); 
     if(ptr==MAP_FAILED)
     {
+        perror("mmap");
         abort();
         return nullptr;
     }
@@ -166,7 +166,8 @@ Span* PageCache::ptr_to_span(void *ptr)
     // std::lock_guard<std::mutex> lock(mutex_);
     std::size_t id = get_page_id(ptr);
     // assert(span_map_.check(id));
-    
+    if(!span_map_.Ensure(id))
+    return nullptr;
     return span_map_[id];
 }
 
@@ -183,7 +184,7 @@ Span *PageCache::get_new_Span()
 
 void PageCache::delete_Span(Span *span)
 {
-    if(new_Span_.available_num_>=100)
+    if(new_Span_.available_num_>=150)
     {
         delete span;
         return;

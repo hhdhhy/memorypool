@@ -1,0 +1,3 @@
+/home/hhdhh/memorypool/build/CMakeFiles/rebuild_cache.dir
+/home/hhdhh/memorypool/build/CMakeFiles/edit_cache.dir
+/home/hhdhh/memorypool/build/CMakeFiles/memory_test.dir

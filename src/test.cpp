@@ -97,14 +97,7 @@ void TestMultiThread()
 	t2.join();
 }
 
-/*这里测试的是让多线程申请ntimes*rounds次，比较malloc和刚写完的ConcurrentAlloc的效率*/
 
-/*比较的时候分两种情况，
-一种是申请ntimes*rounds次同一个块大小的空间，
-一种是申请ntimes*rounds次不同的块大小的空间*/
-
-/*下面的代码稍微过一眼就好*/
-// 比较 malloc 性能的函数
 void BenchmarkMalloc(size_t ntimes, size_t nworks, size_t rounds) {
     std::vector<std::thread> vthread(nworks);
     std::atomic<size_t> malloc_costtime(0);
@@ -118,7 +111,7 @@ void BenchmarkMalloc(size_t ntimes, size_t nworks, size_t rounds) {
         vthread[k] = std::thread([&, k]() {
 			gen.seed(11144);
 			std::uniform_int_distribution<> dist_size(1, 16 * 1024);  // 随机内存块大小
-			std::uniform_int_distribution<> dist_count(10, ntimes);  // 随机内存分配次数
+			std::uniform_int_distribution<> dist_count(ntimes, ntimes);  // 随机内存分配次数
             std::vector<void*> v(ntimes);
 			std::vector<int> p(ntimes);
 
@@ -171,7 +164,7 @@ void BenchmarkConcurrentMalloc(size_t ntimes, size_t nworks, size_t rounds) {
 			std::mt19937 gen;
 			gen.seed(11144);
 			std::uniform_int_distribution<> dist_size(1,16 * 1024);  // 随机内存块大小
-			std::uniform_int_distribution<> dist_count(10, ntimes);  // 随机内存分配次数
+			std::uniform_int_distribution<> dist_count(ntimes, ntimes);  // 随机内存分配次数
             std::vector<void*> v(ntimes);
             std::vector<int> p(ntimes);
 
@@ -214,8 +207,8 @@ int main() {
 	TestMultiThread();
     // 配置测试参数
     size_t ntimes = 1000;  // 每轮分配内存的次数
-    size_t nworks = 4;     // 线程数
-    size_t rounds = 10;    // 轮次
+    size_t nworks = 8;     // 线程数
+    size_t rounds = 100;    // 轮次
 
     // 执行 malloc 测试
     printf("========= Benchmark Malloc =========\n");
